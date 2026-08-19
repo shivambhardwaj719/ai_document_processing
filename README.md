@@ -249,11 +249,16 @@ ruff check .
 curl -X GET http://127.0.0.1:8000/health/
 ```
 
-### 1. Upload Document
+### 1. Upload Document (`POST /api/v1/documents/`)
 
+**Request:**
 ```bash
-curl -X POST http://127.0.0.1:8000/api/v1/documents/ \
-  -F "file=@/path/to/sample.pdf"
+curl -X 'POST' \
+  'http://127.0.0.1:8000/api/v1/documents/' \
+  -H 'accept: application/json' \
+  -H 'Content-Type: multipart/form-data' \
+  -H 'X-From-Swagger: true' \
+  -F 'file=@Assignment-AI.pdf;type=application/pdf'
 ```
 
 **Response (202 Accepted):**
@@ -261,61 +266,199 @@ curl -X POST http://127.0.0.1:8000/api/v1/documents/ \
 {
   "success": true,
   "data": {
-    "id": "e6a7153b-857c-473d-9d41-38e2ecad03a1",
-    "filename": "sample.pdf",
-    "status": "COMPLETED",
+    "id": "991f3740-2ddd-4e88-9458-23f8f34e089e",
+    "filename": "Assignment-AI.pdf",
+    "status": "PENDING",
     "file_type": "pdf",
-    "file_size": 45210,
+    "file_size": 99560,
     "mime_type": "application/pdf",
-    "content_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-    "created_at": "2026-08-19T10:00:00Z",
-    "processed_at": "2026-08-19T10:00:05Z",
+    "content_hash": "06c3fa6e56301d0bf8fe8f38f85045200cd036c21ff79dd7bfa98ffad7f1f998",
+    "created_at": "2026-08-19T12:04:11.248464Z",
+    "processed_at": null,
     "error_message": null,
-    "task_id": "7b89f31a-4d2c-491a-8212-0012abcde345",
+    "task_id": "ba36e20f-dae1-4898-bf37-1157f1793728",
     "retry_count": 0,
-    "analysis": {
-      "title": "Document Intelligence Analysis",
-      "summary": "Comprehensive analysis of document...",
-      "document_category": "Technical Specification",
-      "confidence_score": 0.98
-    }
+    "analysis": null
   },
   "message": "Document uploaded successfully and queued for background analysis."
 }
 ```
 
-### 2. List Documents (Paginated & Filtered)
+---
 
+### 2. List Documents (`GET /api/v1/documents/`)
+
+**Request:**
 ```bash
-curl -X GET "http://127.0.0.1:8000/api/v1/documents/?status=COMPLETED&file_type=pdf&page=1&page_size=10"
+curl -X 'GET' \
+  'http://127.0.0.1:8000/api/v1/documents/?page=1&page_size=10' \
+  -H 'accept: application/json' \
+  -H 'X-From-Swagger: true'
 ```
 
-### 3. Get Document Detail
-
-```bash
-curl -X GET http://127.0.0.1:8000/api/v1/documents/e6a7153b-857c-473d-9d41-38e2ecad03a1/
+**Response (200 OK):**
+```json
+{
+  "success": true,
+  "count": 4,
+  "next": null,
+  "previous": null,
+  "data": [
+    {
+      "id": "991f3740-2ddd-4e88-9458-23f8f34e089e",
+      "filename": "Assignment-AI.pdf",
+      "status": "COMPLETED",
+      "file_type": "pdf",
+      "file_size": 99560,
+      "created_at": "2026-08-19T12:04:11.248464Z",
+      "processing_completed_at": "2026-08-19T12:06:11.010573Z"
+    },
+    {
+      "id": "a2d71b1f-54c4-4051-99a7-6fe21086d421",
+      "filename": "Sivam-Bhardwaj.pdf",
+      "status": "COMPLETED",
+      "file_type": "pdf",
+      "file_size": 300684,
+      "created_at": "2026-08-18T15:40:28.708837Z",
+      "processing_completed_at": "2026-08-18T15:40:31.905930Z"
+    }
+  ],
+  "message": "Documents retrieved successfully."
+}
 ```
 
-### 4. Stream Document Analysis (Server-Sent Events)
+---
 
+### 3. Get Document Detail (`GET /api/v1/documents/{id}/`)
+
+**Request:**
 ```bash
-curl -N -X GET "http://127.0.0.1:8000/api/v1/documents/e6a7153b-857c-473d-9d41-38e2ecad03a1/stream/?template=resume" \
-  -H "accept: text/event-stream"
+curl -X 'GET' \
+  'http://127.0.0.1:8000/api/v1/documents/991f3740-2ddd-4e88-9458-23f8f34e089e/' \
+  -H 'accept: application/json' \
+  -H 'X-From-Swagger: true'
 ```
 
-**SSE Stream Response:**
+**Response (200 OK):**
+```json
+{
+  "success": true,
+  "data": {
+    "id": "991f3740-2ddd-4e88-9458-23f8f34e089e",
+    "filename": "Assignment-AI.pdf",
+    "status": "COMPLETED",
+    "file_type": "pdf",
+    "file_size": 99560,
+    "mime_type": "application/pdf",
+    "content_hash": "06c3fa6e56301d0bf8fe8f38f85045200cd036c21ff79dd7bfa98ffad7f1f998",
+    "created_at": "2026-08-19T12:04:11.248464Z",
+    "processed_at": "2026-08-19T12:06:11.010573Z",
+    "error_message": null,
+    "task_id": "ba36e20f-dae1-4898-bf37-1157f1793728",
+    "retry_count": 0,
+    "analysis": {
+      "title": "Document Intelligence Analysis (Python)",
+      "summary": "Comprehensive analysis of the uploaded document (Technical Specification). Content overview: Python & AI Backend Engineer – Technical Assessment Objective Build a Django REST API that accepts a document, extracts its text, sends the content to an LLM, and returns a structured summary. Requirements 1. Django Project Create a Django REST...",
+      "document_category": "Technical Specification",
+      "confidence_score": 0.98,
+      "sentiment_tone": "Professional & Objective",
+      "readability_level": "Intermediate",
+      "executive_takeaway": "This technical specification contains 472 words covering Python, Backend, Engineer.",
+      "keywords": [
+        "Python",
+        "Backend",
+        "Engineer",
+        "Technical",
+        "Assessment",
+        "Objective",
+        "Build",
+        "Django"
+      ],
+      "key_insights": [
+        "Document focuses primarily on Python and related concepts.",
+        "Contains approximately 472 words structured across multiple key topics.",
+        "Processed and validated with 98% AI extraction confidence score."
+      ],
+      "section_breakdown": [
+        {
+          "heading": "Document Overview",
+          "summary": "Initial section introducing core content: Python & AI Backend Engineer – Technical Assessment Objective Build a Django RES..."
+        },
+        {
+          "heading": "Main Content & Specifications",
+          "summary": "Detailed coverage involving Python, Backend, Engineer, Technical."
+        }
+      ],
+      "action_items": [
+        "Review extracted metadata and section summaries for accuracy."
+      ],
+      "entities": {
+        "organizations": [
+          "Telepathy Infotech",
+          "AI Document Processing Corp"
+        ],
+        "dates": [
+          "August 2026"
+        ],
+        "locations": [
+          "India",
+          "Global"
+        ],
+        "people": [
+          "Document Author"
+        ],
+        "monetary_amounts": [
+          "$0.00 (Processed)"
+        ],
+        "emails_and_contacts": [
+          "contact@example.com"
+        ]
+      },
+      "metadata_metrics": {
+        "reading_time_minutes": 2.4,
+        "key_technologies_mentioned": [
+          "Python",
+          "Django",
+          "Docker",
+          "Celery"
+        ],
+        "urgency_level": "Informational"
+      },
+      "language": "English",
+      "word_count": 472
+    }
+  },
+  "message": "Document details retrieved successfully."
+}
+```
+
+---
+
+### 4. Stream Document Analysis (`GET /api/v1/documents/{id}/stream/`)
+
+**Request:**
+```bash
+curl -X 'GET' \
+  'http://127.0.0.1:8000/api/v1/documents/991f3740-2ddd-4e88-9458-23f8f34e089e/stream/?template=resume' \
+  -H 'accept: text/event-stream' \
+  -H 'X-From-Swagger: true'
+```
+
+**Response (200 OK - Server-Sent Events):**
 ```http
 data: {"chunk": "{\n", "done": false}
 
-data: {"chunk": "  \"title\": \"Document Intelligence Analysis\",\n", "done": false}
+data: {"chunk": "  \"title\": \"Document Intelligence Analysis (Python)\",\n", "done": false}
+
+data: {"chunk": "  \"summary\": \"Comprehensive analysis of the uploaded document (Technical Specification)...\",\n", "done": false}
+
+data: {"chunk": "  \"document_category\": \"Technical Specification\",\n", "done": false}
 
 ...
 
-data: {
-data:   "event": "completed",
-data:   "result": { ... },
-data:   "done": true
-data: }
+data: {"chunk": "}", "done": false}
+
+data: {"event": "completed", "result": {"title": "Document Intelligence Analysis (Python)", "summary": "Comprehensive analysis of the uploaded document...", "document_category": "Technical Specification", "confidence_score": 0.98, "keywords": ["Python", "Backend", "Engineer"], "entities": {"organizations": ["Telepathy Infotech", "AI Document Processing Corp"]}, "metadata_metrics": {"reading_time_minutes": 2.4, "key_technologies_mentioned": ["Python", "Django", "Docker", "Celery"]}}, "done": true}
 ```
 
 ---
