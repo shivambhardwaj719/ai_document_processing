@@ -5,6 +5,35 @@ info:
   description: API for document text extraction and AI analysis using Google Gemini.
 
 paths:
+  /health/:
+    get:
+      summary: System Health Check
+      description: Retrieve real-time operational health status of the application, database, and Redis service.
+      tags:
+      - System
+      responses:
+        '200':
+          description: System is healthy or operating in degraded mode
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: healthy
+                  services:
+                    type: object
+                    properties:
+                      database:
+                        type: string
+                        example: healthy
+                      redis:
+                        type: string
+                        example: healthy
+        '503':
+          description: System service check failed
+
   /api/v1/documents/:
     post:
       summary: Upload Document
