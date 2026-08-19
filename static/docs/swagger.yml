@@ -1,0 +1,221 @@
+openapi: 3.0.3
+info:
+  title: AI Document Processing API
+  version: 1.0.0
+  description: API for document text extraction and AI analysis using Google Gemini.
+
+paths:
+  /api/v1/documents/:
+    post:
+      summary: Upload Document
+      description: Upload a PDF, DOCX, or TXT document (max 10MB) for text extraction and Gemini AI analysis.
+      tags:
+      - Documents
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+              - file
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: File to upload (.pdf, .docx, .txt)
+      responses:
+        '202':
+          description: Document uploaded and processing queued
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/DocumentDetail'
+                  message:
+                    type: string
+                    example: Document uploaded successfully and queued for background analysis.
+        '400':
+          description: Validation error or unsupported file format
+
+    get:
+      summary: List Documents
+      description: Retrieve a paginated list of documents with optional filtering by status and file type.
+      tags:
+      - Documents
+      parameters:
+      - in: query
+        name: status
+        schema:
+          type: string
+          enum: [PENDING, PROCESSING, COMPLETED, FAILED]
+        description: Filter by processing status
+      - in: query
+        name: file_type
+        schema:
+          type: string
+          enum: [pdf, docx, txt]
+        description: Filter by document format
+      - in: query
+        name: page
+        schema:
+          type: integer
+          default: 1
+        description: Page number
+      - in: query
+        name: page_size
+        schema:
+          type: integer
+          default: 10
+        description: Results per page
+      responses:
+        '200':
+          description: List of documents
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  count:
+                    type: integer
+                    example: 1
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/DocumentList'
+
+  /api/v1/documents/{id}/:
+    get:
+      summary: Get Document Detail
+      description: Retrieve complete metadata and Gemini LLM analysis result for a document by UUID.
+      tags:
+      - Documents
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: Document UUID
+      responses:
+        '200':
+          description: Document detail and AI analysis
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/DocumentDetail'
+        '404':
+          description: Document not found
+
+components:
+  schemas:
+    DocumentDetail:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: b0bcd8c1-ca68-446b-8280-c082e9958f8b
+        filename:
+          type: string
+          example: report.txt
+        status:
+          type: string
+          enum: [PENDING, PROCESSING, COMPLETED, FAILED]
+          example: COMPLETED
+        file_type:
+          type: string
+          enum: [pdf, docx, txt]
+          example: txt
+        file_size:
+          type: integer
+          example: 421
+        mime_type:
+          type: string
+          example: text/plain
+        content_hash:
+          type: string
+          example: 3f459167002e0880451bb1265fd894f8867d002cccaa299d07aefd476724a5eb
+        created_at:
+          type: string
+          format: date-time
+          example: "2026-08-18T14:16:15Z"
+        processed_at:
+          type: string
+          format: date-time
+          nullable: true
+          example: "2026-08-18T14:16:17Z"
+        error_message:
+          type: string
+          nullable: true
+        task_id:
+          type: string
+          nullable: true
+          example: 402350af-a689-4a22-be46-f4ce4c3fd9d9
+        retry_count:
+          type: integer
+          example: 0
+        analysis:
+          type: object
+          nullable: true
+          properties:
+            title:
+              type: string
+              example: Google Gemini Integration Report
+            summary:
+              type: string
+              example: Document text extracted and analyzed by Gemini LLM.
+            keywords:
+              type: array
+              items:
+                type: string
+              example: ["Gemini", "AI", "Document Processing"]
+            language:
+              type: string
+              example: English
+            word_count:
+              type: integer
+              example: 42
+
+    DocumentList:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        filename:
+          type: string
+          example: report.txt
+        status:
+          type: string
+          enum: [PENDING, PROCESSING, COMPLETED, FAILED]
+          example: COMPLETED
+        file_type:
+          type: string
+          enum: [pdf, docx, txt]
+          example: txt
+        file_size:
+          type: integer
+          example: 421
+        created_at:
+          type: string
+          format: date-time
+        processing_completed_at:
+          type: string
+          format: date-time
+          nullable: true

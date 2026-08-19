@@ -1,0 +1,284 @@
+{
+  "info": {
+    "_postman_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "name": "AI Document Processing API (Gemini LLM)",
+    "description": "Production-grade Django REST Framework API for document text extraction and Google Gemini LLM document analysis.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8000",
+      "type": "string"
+    },
+    {
+      "key": "documentId",
+      "value": "b0bcd8c1-ca68-446b-8280-c082e9958f8b",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health Check",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/health/",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "health",
+            ""
+          ]
+        },
+        "description": "Returns operational status of API application, PostgreSQL database, and Redis broker."
+      },
+      "response": [
+        {
+          "name": "200 OK - Healthy",
+          "originalRequest": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/health/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health",
+                ""
+              ]
+            }
+          },
+          "status": "OK",
+          "code": 200,
+          "_postman_previewlanguage": "json",
+          "body": "{\n  \"status\": \"healthy\",\n  \"services\": {\n    \"database\": \"healthy\",\n    \"redis\": \"healthy\"\n  }\n}"
+        }
+      ]
+    },
+    {
+      "name": "Upload Document",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "var jsonData = pm.response.json();",
+              "if (jsonData && jsonData.data && jsonData.data.id) {",
+              "    pm.collectionVariables.set('documentId', jsonData.data.id);",
+              "    console.log('Saved documentId:', jsonData.data.id);",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "file",
+              "type": "file",
+              "description": "Select a .pdf, .docx, or .txt file to upload"
+            }
+          ]
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/documents/",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "documents",
+            ""
+          ]
+        },
+        "description": "Upload a PDF, DOCX, or TXT file for background text extraction and Google Gemini LLM analysis. Automatically sets the `documentId` variable upon upload."
+      },
+      "response": [
+        {
+          "name": "202 Accepted",
+          "originalRequest": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/documents/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "documents",
+                ""
+              ]
+            }
+          },
+          "status": "Accepted",
+          "code": 202,
+          "_postman_previewlanguage": "json",
+          "body": "{\n  \"success\": true,\n  \"data\": {\n    \"id\": \"b0bcd8c1-ca68-446b-8280-c082e9958f8b\",\n    \"filename\": \"test_gemini_doc.txt\",\n    \"status\": \"PENDING\",\n    \"file_type\": \"txt\",\n    \"file_size\": 421,\n    \"mime_type\": \"text/plain\",\n    \"content_hash\": \"3f459167002e0880451bb1265fd894f8867d002cccaa299d07aefd476724a5eb\",\n    \"created_at\": \"2026-08-18T14:16:15.449612Z\",\n    \"processed_at\": null,\n    \"error_message\": null,\n    \"task_id\": \"402350af-a689-4a22-be46-f4ce4c3fd9d9\",\n    \"retry_count\": 0,\n    \"analysis\": null\n  },\n  \"message\": \"Document uploaded successfully and queued for background analysis.\"\n}"
+        }
+      ]
+    },
+    {
+      "name": "List Documents (Paginated & Filtered)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/documents/?status=COMPLETED&file_type=txt&page=1&page_size=10",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "documents",
+            ""
+          ],
+          "query": [
+            {
+              "key": "status",
+              "value": "COMPLETED",
+              "description": "Filter by status: PENDING, PROCESSING, COMPLETED, FAILED"
+            },
+            {
+              "key": "file_type",
+              "value": "txt",
+              "description": "Filter by file format: pdf, docx, txt"
+            },
+            {
+              "key": "page",
+              "value": "1",
+              "description": "Pagination page number"
+            },
+            {
+              "key": "page_size",
+              "value": "10",
+              "description": "Results per page"
+            }
+          ]
+        },
+        "description": "Retrieve a paginated list of processed documents with optional filtering by status and file_type."
+      },
+      "response": [
+        {
+          "name": "200 OK",
+          "originalRequest": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/documents/?status=COMPLETED",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "documents",
+                ""
+              ]
+            }
+          },
+          "status": "OK",
+          "code": 200,
+          "_postman_previewlanguage": "json",
+          "body": "{\n  \"success\": true,\n  \"count\": 1,\n  \"next\": null,\n  \"previous\": null,\n  \"data\": [\n    {\n      \"id\": \"b0bcd8c1-ca68-446b-8280-c082e9958f8b\",\n      \"filename\": \"test_gemini_doc.txt\",\n      \"status\": \"COMPLETED\",\n      \"file_type\": \"txt\",\n      \"file_size\": 421,\n      \"created_at\": \"2026-08-18T14:16:15.449612Z\",\n      \"processing_completed_at\": \"2026-08-18T14:16:17.462678Z\"\n    }\n  ]\n}"
+        }
+      ]
+    },
+    {
+      "name": "Get Document Detail",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/documents/{{documentId}}/",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "documents",
+            "{{documentId}}",
+            ""
+          ]
+        },
+        "description": "Retrieve comprehensive detail, text extraction metadata, and Google Gemini LLM analysis for a single document UUID."
+      },
+      "response": [
+        {
+          "name": "200 OK - Detail with Gemini Analysis",
+          "originalRequest": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/documents/{{documentId}}/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "documents",
+                "{{documentId}}",
+                ""
+              ]
+            }
+          },
+          "status": "OK",
+          "code": 200,
+          "_postman_previewlanguage": "json",
+          "body": "{\n  \"success\": true,\n  \"data\": {\n    \"id\": \"b0bcd8c1-ca68-446b-8280-c082e9958f8b\",\n    \"filename\": \"test_gemini_doc.txt\",\n    \"status\": \"COMPLETED\",\n    \"file_type\": \"txt\",\n    \"file_size\": 421,\n    \"mime_type\": \"text/plain\",\n    \"content_hash\": \"3f459167002e0880451bb1265fd894f8867d002cccaa299d07aefd476724a5eb\",\n    \"created_at\": \"2026-08-18T14:16:15.449612Z\",\n    \"processed_at\": \"2026-08-18T14:16:17.462678Z\",\n    \"error_message\": null,\n    \"task_id\": \"402350af-a689-4a22-be46-f4ce4c3fd9d9\",\n    \"retry_count\": 0,\n    \"analysis\": {\n      \"title\": \"Google Gemini Integration Verification Document\",\n      \"summary\": \"This document verifies the live integration between a Django REST Framework backend and the Google Gemini LLM. Celery background workers process uploaded files and use Gemini's OpenAI-compatible endpoint to extract structured data such as titles, summaries, and word counts.\",\n      \"keywords\": [\n        \"Google Gemini\",\n        \"Django REST Framework\",\n        \"Celery\",\n        \"LLM integration\",\n        \"document processing\"\n      ],\n      \"language\": \"English\",\n      \"word_count\": 42\n    }\n  }\n}"
+        }
+      ]
+    },
+    {
+      "name": "OpenAPI Raw Schema",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/schema/",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "schema",
+            ""
+          ]
+        },
+        "description": "Download raw OpenAPI 3.0 YAML/JSON specification schema."
+      },
+      "response": []
+    },
+    {
+      "name": "OpenAPI Swagger UI",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/schema/swagger-ui/",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "schema",
+            "swagger-ui",
+            ""
+          ]
+        },
+        "description": "Interactive OpenAPI Swagger UI documentation endpoint."
+      },
+      "response": []
+    }
+  ]
+}
