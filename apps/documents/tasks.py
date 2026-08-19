@@ -20,7 +20,7 @@ def process_document_task(self, document_id: str):
     """
     Celery background task for asynchronous document extraction and LLM analysis.
     """
-    task_id = self.request.id
+    task_id = getattr(self.request, "id", None) or str(document_id)
     logger.info(f"Celery task {task_id} starting execution for Document ID: {document_id}")
 
     try:
@@ -30,8 +30,9 @@ def process_document_task(self, document_id: str):
         logger.error(f"Task {task_id} aborted: Document {document_id} not found in DB.")
         return
 
-    if self.request.retries > 0:
-        doc.retry_count = self.request.retries
+    retries = getattr(self.request, "retries", 0)
+    if retries > 0:
+        doc.retry_count = retries
         doc.save(update_fields=["retry_count"])
 
     try:

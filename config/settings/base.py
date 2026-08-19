@@ -27,6 +27,7 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "apps.documents.middleware.RequestLoggingMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"
@@ -75,6 +76,8 @@ CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
 CELERY_TIMEZONE = TIME_ZONE
 CELERY_TASK_TIME_LIMIT = 300
+CELERY_TASK_ALWAYS_EAGER = os.getenv("CELERY_TASK_ALWAYS_EAGER", "True").lower() in ("true", "1", "t")
+CELERY_TASK_EAGER_PROPAGATES = True
 
 LLM_API_KEY = os.getenv("LLM_API_KEY", "mock-api-key")
 LLM_BASE_URL = os.getenv("LLM_BASE_URL", "https://api.openai.com/v1")

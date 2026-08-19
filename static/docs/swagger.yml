@@ -151,6 +151,42 @@ paths:
         '404':
           description: Document not found
 
+  /api/v1/documents/{id}/stream/:
+    get:
+      summary: Stream Document Analysis
+      description: Stream real-time structured LLM analysis of a document using Server-Sent Events (SSE).
+      tags:
+      - Documents
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: Document UUID
+      - in: query
+        name: template
+        required: false
+        schema:
+          type: string
+          default: default
+          enum: [default, general, resume, contract]
+        description: Prompt template name to use for analysis
+      responses:
+        '200':
+          description: Server-Sent Events stream emitting analysis chunks
+          content:
+            text/event-stream:
+              schema:
+                type: string
+                example: "data: {\"chunk\": \"...\", \"done\": false}\n\n"
+        '400':
+          description: Text extraction failure or empty document text
+        '404':
+          description: Document not found
+
+
 components:
   schemas:
     DocumentDetail:

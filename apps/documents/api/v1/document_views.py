@@ -1,7 +1,8 @@
 import logging
 
 from django.core.exceptions import ObjectDoesNotExist
-from rest_framework import parsers
+from django.http import StreamingHttpResponse
+from rest_framework import parsers, renderers
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.views import APIView
 
@@ -13,9 +14,19 @@ from apps.documents.api.v1.document_serializers import (
 )
 from apps.documents.models import DocumentStatus, FileType
 from apps.documents.services.document_service import DocumentService
+from apps.documents.services.llm_service import LLMService
 from apps.documents.tasks import process_document_task
 
 logger = logging.getLogger(__name__)
+
+
+class SSERenderer(renderers.BaseRenderer):
+    media_type = "text/event-stream"
+    format = "event-stream"
+
+    def render(self, data, accepted_media_type=None, renderer_context=None):
+        return data
+
 
 
 class DocumentListUploadView(APIView):
@@ -93,6 +104,7 @@ class DocumentListUploadView(APIView):
             except Exception as sync_err:
                 logger.error(f"Synchronous document processing failed: {sync_err}")
 
+        document.refresh_from_db()
         response_data = DocumentDetailSerializer(document).data
 
         return ResponseHandler.accepted(
@@ -117,3 +129,47 @@ class DocumentDetailView(APIView):
             data=serializer.data,
             message=ResponseMessages.DOCUMENT_DETAIL_SUCCESS,
         )
+
+
+class DocumentStreamView(APIView):
+
+    renderer_classes = (SSERenderer, renderers.JSONRenderer)
+
+    def perform_content_negotiation(self, request, force=False):
+        return (SSERenderer(), "text/event-stream")
+
+    def get(self, request, pk):
+
+        try:
+            document = DocumentService.get_document_by_id(pk)
+        except (ObjectDoesNotExist, ValueError):
+            return ResponseHandler.not_found(
+                message=ResponseMessages.DOCUMENT_NOT_FOUND,
+            )
+
+        try:
+            if document.extracted_text and document.extracted_text.strip():
+                extracted_text = document.extracted_text
+            else:
+                from apps.documents.services.extraction_service import ExtractionService
+                extracted_text = ExtractionService.extract_text_from_file(
+                    document.file.path, document.file_type
+                )
+        except Exception as exc:
+            return ResponseHandler.error(
+                code="EXTRACTION_FAILED",
+                message=f"Failed to extract document text for streaming: {exc}",
+                status_code=HttpResponseCode.BAD_REQUEST,
+            )
+
+        template_name = request.query_params.get("template", "default")
+        llm_service = LLMService()
+
+        response = StreamingHttpResponse(
+            llm_service.stream_analyze_document(extracted_text, template_name=template_name),
+            content_type="text/event-stream",
+        )
+        response["Cache-Control"] = "no-cache"
+        response["X-Accel-Buffering"] = "no"
+        return response
+

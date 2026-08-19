@@ -8,67 +8,13 @@ import httpx
 from django.conf import settings
 from pydantic import ValidationError as PydanticValidationError
 
+from apps.documents.prompts.templates import get_prompt_template
 from apps.documents.schemas.llm_response import DocumentAnalysisSchema
 
 logger = logging.getLogger(__name__)
 
-DOCUMENT_ANALYSIS_SYSTEM_PROMPT = """You are an expert, enterprise-grade Document Intelligence & Analysis AI system.
-Your task is to analyze the provided document text and extract an exhaustive, multi-dimensional structured JSON analysis.
-The document can be of ANY domain or format (Resume/CV, Legal Contract, Technical Specification, Invoice, Medical Report, Financial Statement, Meeting Minutes, Research Paper, etc.).
+DOCUMENT_ANALYSIS_SYSTEM_PROMPT = get_prompt_template("default")
 
-You MUST respond with a valid raw JSON object matching EXACTLY the following JSON schema:
-{
-  "title": "<Concise, highly descriptive document title>",
-  "summary": "<A comprehensive 3-5 sentence executive summary of the document>",
-  "document_category": "<Exact category e.g. Resume / CV, Invoice, Legal Contract, Technical Specification, Medical Report, Financial Statement, General Report>",
-  "confidence_score": <Float 0.0 to 1.0 indicating AI extraction confidence>,
-  "sentiment_tone": "<Tone e.g. Professional & Objective, Formal, Urgent, Technical>",
-  "readability_level": "<Audience readability level e.g. Basic, Intermediate, Advanced / Technical, Executive>",
-  "executive_takeaway": "<Single sentence bottom-line takeaway summarizing the key point of the entire document>",
-  "keywords": ["<keyword1>", "<keyword2>", "<keyword3>", "<keyword4>", "<keyword5>"],
-  "key_insights": [
-    "<Detailed key takeaway / core finding 1>",
-    "<Detailed key takeaway / core finding 2>",
-    "<Detailed key takeaway / core finding 3>"
-  ],
-  "section_breakdown": [
-    {
-      "heading": "<Name of Section or Topic 1>",
-      "summary": "<Summary of details in Section 1>"
-    },
-    {
-      "heading": "<Name of Section or Topic 2>",
-      "summary": "<Summary of details in Section 2>"
-    }
-  ],
-  "action_items": [
-    "<Action item, recommendation, or deadline identified (if any)>"
-  ],
-  "entities": {
-    "organizations": ["<Company/Org 1>"],
-    "dates": ["<Date or deadline 1>"],
-    "locations": ["<City/Location 1>"],
-    "people": ["<Person name 1>"],
-    "monetary_amounts": ["<Monetary value 1>"],
-    "emails_and_contacts": ["<Email or phone 1>"]
-  },
-  "metadata_metrics": {
-    "reading_time_minutes": <Float estimated reading time in minutes>,
-    "key_technologies_mentioned": ["<Tech/Tool 1>"],
-    "urgency_level": "<Urgency e.g. Critical, High, Normal, Informational>"
-  },
-  "language": "<Primary language of text, e.g. English, Spanish>",
-  "word_count": <Integer total word count>
-}
-
-CRITICAL REQUIREMENTS:
-1. Base your analysis EXCLUSIVELY on the provided text. Extract all relevant details, names, dates, tech stacks, topics, sections, and metrics.
-2. The 'keywords', 'key_insights', 'action_items', and 'section_breakdown' MUST be JSON arrays.
-3. The 'entities' object MUST contain arrays for 'organizations', 'dates', 'locations', 'people', 'monetary_amounts', and 'emails_and_contacts'.
-4. 'confidence_score' MUST be a float between 0.0 and 1.0.
-5. 'word_count' MUST be an integer representing the word count.
-6. Output ONLY valid raw JSON. Do NOT include markdown code block formatting (such as ```json ... ```), preamble, or commentary.
-"""
 
 
 def build_analysis_user_prompt(text: str, max_chars: int = 50000) -> str:
@@ -356,3 +302,59 @@ class LLMService:
         raise LLMServiceError(
             f"LLM Service failed after {self.max_retries} retries. Last error: {last_exception}"
         )
+
+    def stream_analyze_document(self, extracted_text: str, template_name: str = "default"):
+
+        if not extracted_text or not extracted_text.strip():
+            yield "data: " + json.dumps({"error": "Cannot analyze empty document text."}) + "\n\n"
+            return
+
+        if self.is_mock_mode():
+            logger.info("LLMService streaming operating in MOCK mode.")
+            mock_result = self.generate_mock_analysis(extracted_text)
+            formatted_json = json.dumps(mock_result, indent=2)
+
+            for line in formatted_json.splitlines(True):
+                event_payload = json.dumps({"chunk": line, "done": False})
+                yield f"data: {event_payload}\n\n"
+                time.sleep(0.01)
+
+            final_payload = json.dumps({"event": "completed", "result": mock_result, "done": True})
+            yield f"data: {final_payload}\n\n"
+            return
+
+        system_prompt = get_prompt_template(template_name)
+        user_prompt = build_analysis_user_prompt(extracted_text)
+
+        payload = {
+            "model": self.model,
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            "temperature": 0.2,
+            "stream": True,
+        }
+
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+        }
+
+        url = f"{self.base_url}/chat/completions"
+
+        try:
+            with httpx.Client(timeout=self.timeout) as client:
+                with client.stream("POST", url, json=payload, headers=headers) as response:
+                    if response.status_code != 200:
+                        yield "data: " + json.dumps({"error": f"LLM API returned status {response.status_code}"}) + "\n\n"
+                        return
+
+                    for line in response.iter_lines():
+                        if line:
+                            yield f"{line}\n\n"
+
+        except Exception as exc:
+            logger.exception("Error during LLM streaming response")
+            yield "data: " + json.dumps({"error": str(exc)}) + "\n\n"
+

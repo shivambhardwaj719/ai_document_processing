@@ -1,0 +1,54 @@
+version: '3.8'
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: ai_doc_redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  web:
+    build: .
+    container_name: ai_doc_web
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - .:/app
+      - media_volume:/app/media
+    ports:
+      - "8000:8000"
+    environment:
+      - DJANGO_SETTINGS_MODULE=config.settings.development
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - LLM_API_KEY=${LLM_API_KEY:-mock-api-key}
+      - LLM_MODEL=${LLM_MODEL:-gpt-4o-mini}
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  celery_worker:
+    build: .
+    container_name: ai_doc_celery
+    command: celery -A config worker --loglevel=info
+    volumes:
+      - .:/app
+      - media_volume:/app/media
+    environment:
+      - DJANGO_SETTINGS_MODULE=config.settings.development
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - LLM_API_KEY=${LLM_API_KEY:-mock-api-key}
+      - LLM_MODEL=${LLM_MODEL:-gpt-4o-mini}
+    depends_on:
+      redis:
+        condition: service_healthy
+      web:
+        condition: service_started
+
+volumes:
+  media_volume:
