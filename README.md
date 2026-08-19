@@ -121,8 +121,10 @@ ai_document_processing/
 │           ├── file_validation.py
 │           └── logging.py
 │
-└── docs/
-    └── postman_collection.json
+└── static/
+    └── docs/
+        ├── swagger.yml
+        └── postman_collection.json
 ```
 
 ---
