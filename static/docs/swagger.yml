@@ -176,21 +176,106 @@ components:
           properties:
             title:
               type: string
-              example: Google Gemini Integration Report
+              example: Shivam Bhardwaj - Resume
             summary:
               type: string
-              example: Document text extracted and analyzed by Gemini LLM.
+              example: Professional resume detailing 2+ years of full-stack software development experience.
+            document_category:
+              type: string
+              example: Resume / CV
+            confidence_score:
+              type: number
+              format: float
+              example: 0.98
+            sentiment_tone:
+              type: string
+              example: Professional & Objective
+            readability_level:
+              type: string
+              example: Intermediate
+            executive_takeaway:
+              type: string
+              example: Experienced Software Developer skilled in Python, Django, FastAPI, Node.js, and AWS.
             keywords:
               type: array
               items:
                 type: string
-              example: ["Gemini", "AI", "Document Processing"]
+              example: ["Software Developer", "Python", "Node.js", "AWS", "FastAPI", "Django"]
+            key_insights:
+              type: array
+              items:
+                type: string
+              example: ["Over 2 years full-stack development experience.", "Built lead management and healthcare platforms."]
+            section_breakdown:
+              type: array
+              items:
+                type: object
+                properties:
+                  heading:
+                    type: string
+                    example: Work Experience
+                  summary:
+                    type: string
+                    example: Associate Software Developer at Telepathy Infotech.
+            action_items:
+              type: array
+              items:
+                type: string
+              example: ["Review technical portfolio and schedule interview."]
+            entities:
+              type: object
+              properties:
+                organizations:
+                  type: array
+                  items:
+                    type: string
+                  example: ["Telepathy Infotech", "ReyDiv Technologies"]
+                dates:
+                  type: array
+                  items:
+                    type: string
+                  example: ["2022 - Present"]
+                locations:
+                  type: array
+                  items:
+                    type: string
+                  example: ["Jaipur, India"]
+                people:
+                  type: array
+                  items:
+                    type: string
+                  example: ["Shivam Bhardwaj"]
+                monetary_amounts:
+                  type: array
+                  items:
+                    type: string
+                  example: []
+                emails_and_contacts:
+                  type: array
+                  items:
+                    type: string
+                  example: ["shivam@example.com", "+91-9876543210"]
+            metadata_metrics:
+              type: object
+              properties:
+                reading_time_minutes:
+                  type: number
+                  format: float
+                  example: 2.5
+                key_technologies_mentioned:
+                  type: array
+                  items:
+                    type: string
+                  example: ["Python", "Django", "FastAPI", "Node.js", "AWS"]
+                urgency_level:
+                  type: string
+                  example: Informational
             language:
               type: string
               example: English
             word_count:
               type: integer
-              example: 42
+              example: 481
 
     DocumentList:
       type: object

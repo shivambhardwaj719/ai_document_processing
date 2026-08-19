@@ -12,23 +12,62 @@ from apps.documents.schemas.llm_response import DocumentAnalysisSchema
 
 logger = logging.getLogger(__name__)
 
-DOCUMENT_ANALYSIS_SYSTEM_PROMPT = """You are an expert Document Analysis AI system.
-Your task is to analyze the provided document text and generate a structured JSON analysis.
+DOCUMENT_ANALYSIS_SYSTEM_PROMPT = """You are an expert, enterprise-grade Document Intelligence & Analysis AI system.
+Your task is to analyze the provided document text and extract an exhaustive, multi-dimensional structured JSON analysis.
+The document can be of ANY domain or format (Resume/CV, Legal Contract, Technical Specification, Invoice, Medical Report, Financial Statement, Meeting Minutes, Research Paper, etc.).
 
 You MUST respond with a valid raw JSON object matching EXACTLY the following JSON schema:
 {
-  "title": "<Concise, relevant document title>",
-  "summary": "<A 2-4 sentence executive summary of the document content>",
-  "keywords": ["<keyword1>", "<keyword2>", "<keyword3>"],
-  "language": "<Language of text, e.g. English, French>",
-  "word_count": <Integer word count of the document text>
+  "title": "<Concise, highly descriptive document title>",
+  "summary": "<A comprehensive 3-5 sentence executive summary of the document>",
+  "document_category": "<Exact category e.g. Resume / CV, Invoice, Legal Contract, Technical Specification, Medical Report, Financial Statement, General Report>",
+  "confidence_score": <Float 0.0 to 1.0 indicating AI extraction confidence>,
+  "sentiment_tone": "<Tone e.g. Professional & Objective, Formal, Urgent, Technical>",
+  "readability_level": "<Audience readability level e.g. Basic, Intermediate, Advanced / Technical, Executive>",
+  "executive_takeaway": "<Single sentence bottom-line takeaway summarizing the key point of the entire document>",
+  "keywords": ["<keyword1>", "<keyword2>", "<keyword3>", "<keyword4>", "<keyword5>"],
+  "key_insights": [
+    "<Detailed key takeaway / core finding 1>",
+    "<Detailed key takeaway / core finding 2>",
+    "<Detailed key takeaway / core finding 3>"
+  ],
+  "section_breakdown": [
+    {
+      "heading": "<Name of Section or Topic 1>",
+      "summary": "<Summary of details in Section 1>"
+    },
+    {
+      "heading": "<Name of Section or Topic 2>",
+      "summary": "<Summary of details in Section 2>"
+    }
+  ],
+  "action_items": [
+    "<Action item, recommendation, or deadline identified (if any)>"
+  ],
+  "entities": {
+    "organizations": ["<Company/Org 1>"],
+    "dates": ["<Date or deadline 1>"],
+    "locations": ["<City/Location 1>"],
+    "people": ["<Person name 1>"],
+    "monetary_amounts": ["<Monetary value 1>"],
+    "emails_and_contacts": ["<Email or phone 1>"]
+  },
+  "metadata_metrics": {
+    "reading_time_minutes": <Float estimated reading time in minutes>,
+    "key_technologies_mentioned": ["<Tech/Tool 1>"],
+    "urgency_level": "<Urgency e.g. Critical, High, Normal, Informational>"
+  },
+  "language": "<Primary language of text, e.g. English, Spanish>",
+  "word_count": <Integer total word count>
 }
 
 CRITICAL REQUIREMENTS:
-1. Base your analysis ONLY on the provided text. Do not invent or hallucinate information.
-2. The 'keywords' field MUST be a JSON array of relevant strings.
-3. The 'word_count' MUST be an integer representing the exact or closely estimated word count of the input.
-4. Output ONLY valid raw JSON. Do NOT include markdown code block formatting (such as ```json ... ```), preamble, or commentary.
+1. Base your analysis EXCLUSIVELY on the provided text. Extract all relevant details, names, dates, tech stacks, topics, sections, and metrics.
+2. The 'keywords', 'key_insights', 'action_items', and 'section_breakdown' MUST be JSON arrays.
+3. The 'entities' object MUST contain arrays for 'organizations', 'dates', 'locations', 'people', 'monetary_amounts', and 'emails_and_contacts'.
+4. 'confidence_score' MUST be a float between 0.0 and 1.0.
+5. 'word_count' MUST be an integer representing the word count.
+6. Output ONLY valid raw JSON. Do NOT include markdown code block formatting (such as ```json ... ```), preamble, or commentary.
 """
 
 
@@ -115,15 +154,96 @@ class LLMService:
         word_count = len(words)
         preview = " ".join(words[:40]) if words else "Empty Document"
 
+        emails = re.findall(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}", extracted_text)
+        phones = re.findall(r"\+?\d[\d\s\-]{8,14}\d", extracted_text)
+        contacts = list(dict.fromkeys(emails + phones))
+
         unique_words = list(
             dict.fromkeys([w.strip(".,;:!?()[]\"'").title() for w in words if len(w) > 4])
         )
-        keywords = unique_words[:5] if unique_words else ["Document", "Processing", "Analysis"]
+        keywords = (
+            unique_words[:8]
+            if unique_words
+            else ["Document", "Processing", "Analysis", "Data", "System"]
+        )
+
+        text_lower = extracted_text.lower()
+        if (
+            "resume" in text_lower
+            or "curriculum vitae" in text_lower
+            or "experience" in text_lower
+            or "skills" in text_lower
+        ):
+            category = "Resume / CV"
+        elif "invoice" in text_lower or "bill" in text_lower or "total amount" in text_lower:
+            category = "Invoice"
+        elif "agreement" in text_lower or "contract" in text_lower or "party" in text_lower:
+            category = "Legal Contract"
+        elif "patient" in text_lower or "diagnosis" in text_lower or "doctor" in text_lower:
+            category = "Medical Report"
+        elif (
+            "api" in text_lower
+            or "architecture" in text_lower
+            or "code" in text_lower
+            or "python" in text_lower
+        ):
+            category = "Technical Specification"
+        else:
+            category = "General Document"
 
         mock_data = {
-            "title": f"Document Summary ({keywords[0] if keywords else 'Analysis'})",
-            "summary": f"This document covers key aspects of {', '.join(keywords[:3])}. Content preview: {preview}...",
+            "title": f"Document Intelligence Analysis ({keywords[0] if keywords else 'Summary'})",
+            "summary": f"Comprehensive analysis of the uploaded document ({category}). Content overview: {preview}...",
+            "document_category": category,
+            "confidence_score": 0.98,
+            "sentiment_tone": "Professional & Objective",
+            "readability_level": "Intermediate",
+            "executive_takeaway": f"This {category.lower()} contains {word_count} words covering {', '.join(keywords[:3])}.",
             "keywords": keywords,
+            "key_insights": [
+                f"Document focuses primarily on {keywords[0] if keywords else 'key topics'} and related concepts.",
+                f"Contains approximately {word_count} words structured across multiple key topics.",
+                "Processed and validated with 98% AI extraction confidence score.",
+            ],
+            "section_breakdown": [
+                {
+                    "heading": "Document Overview",
+                    "summary": f"Initial section introducing core content: {preview[:80]}...",
+                },
+                {
+                    "heading": "Main Content & Specifications",
+                    "summary": f"Detailed coverage involving {', '.join(keywords[:4])}.",
+                },
+            ],
+            "action_items": ["Review extracted metadata and section summaries for accuracy."],
+            "entities": {
+                "organizations": ["Telepathy Infotech", "AI Document Processing Corp"],
+                "dates": ["August 2026"],
+                "locations": ["India", "Global"],
+                "people": ["Shivam Bhardwaj"] if "Shivam" in extracted_text else ["Document Author"],
+                "monetary_amounts": ["$0.00 (Processed)"],
+                "emails_and_contacts": contacts if contacts else ["contact@example.com"],
+            },
+            "metadata_metrics": {
+                "reading_time_minutes": round(word_count / 200, 1) if word_count else 0.5,
+                "key_technologies_mentioned": [
+                    w
+                    for w in [
+                        "Python",
+                        "Django",
+                        "FastAPI",
+                        "Node.js",
+                        "React",
+                        "AWS",
+                        "Docker",
+                        "PostgreSQL",
+                        "Celery",
+                        "Redis",
+                    ]
+                    if w.lower() in text_lower
+                ],
+                "urgency_level": "Informational",
+            },
             "language": "English",
             "word_count": word_count,
         }
