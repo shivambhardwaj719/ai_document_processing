@@ -1,28 +1,31 @@
 # Production-Ready AI Document Processing Backend
 
-An enterprise-grade Django REST Framework application for asynchronous document upload, text extraction (PDF, DOCX, TXT), and structured LLM analysis built with Python 3.12+, PostgreSQL/SQLite, Celery, Redis, and OpenAPI documentation.
+An enterprise-grade Django REST Framework application for asynchronous document upload, text extraction (PDF, DOCX, TXT), enriched document intelligence, streaming LLM analysis, prompt template management, request logging middleware, and containerized deployment built with Python 3.11+, PostgreSQL/SQLite, Celery, Redis, Docker, and OpenAPI documentation.
 
 ---
 
 ## 1. Project Overview
 
-This backend system provides a production-level API for uploading documents, validating their content securely, extracting raw text using format-specific extractors, and processing the text asynchronously using OpenAI-compatible Large Language Models (LLMs) to produce validated structured JSON analysis (`title`, `summary`, `keywords`, `language`, `word_count`).
+This backend system provides a production-level API for uploading documents, validating content securely, extracting raw text using format-specific extractors, and processing text asynchronously using OpenAI-compatible Large Language Models (LLMs) to produce rich, validated structured JSON analysis (`title`, `summary`, `document_category`, `confidence_score`, `entities`, `section_breakdown`, `keywords`, etc.).
 
-### Key Highlights & Implemented Bonus Enhancements:
-1. **Celery Background Processing (Bonus Feature)**: Document upload immediately returns `202 Accepted` while Celery background workers handle text extraction and LLM processing asynchronously without blocking API threads.
-2. **Retry Logic for LLM Calls (Bonus Feature)**: Robust exponential backoff retries and request timeouts handling transient API failures gracefully.
-3. **Strict Content Validation**: File headers are inspected using magic bytes to prevent spoofing, path traversal, or corrupted payload uploads.
-4. **Factory Extraction Architecture**: Decoupled extractor classes (`PDFExtractor`, `DOCXExtractor`, `TXTExtractor`) inheriting from `BaseExtractor`.
-5. **Structured Schema Validation**: Pydantic schema validation enforcing output format for LLM responses.
-6. **Modular API Architecture**: Versioned API layout under `apps/documents/api/v1/`.
+### Implemented Enhancements & Bonus Features:
+1. 🐳 **Docker Support (Bonus Feature)**: Fully containerized application with `Dockerfile` and `docker-compose.yml` orchestrating `web`, `celery_worker`, and `redis` services.
+2. ⚡ **Celery Background Processing (Bonus Feature)**: Document extraction and LLM requests are processed asynchronously using Celery and Redis. Supports synchronous fallback & eager mode (`CELERY_TASK_ALWAYS_EAGER`) for development.
+3. 🧪 **Comprehensive Unit Test Suite (Bonus Feature)**: 21 unit & integration tests written with `pytest-django` covering models, format extractors, LLM services, REST API views, streaming, and middleware.
+4. 🔄 **Retry & Timeout Logic for LLM Calls (Bonus Feature)**: Exponential backoff retries and configurable timeout mechanisms to handle transient API failures gracefully.
+5. 🌊 **Streaming LLM Responses (Bonus Feature)**: Real-time Server-Sent Events (SSE) streaming via `GET /api/v1/documents/{id}/stream/`.
+6. 📝 **Configurable Prompt Templates (Bonus Feature)**: Dynamic prompt registry (`apps/documents/prompts/templates.py`) supporting templates (`default`, `resume`, `contract`, `general`) and environment override (`LLM_PROMPT_OVERRIDE`).
+7. 📊 **HTTP Request Logging Middleware (Bonus Feature)**: Structured JSON middleware (`RequestLoggingMiddleware`) capturing HTTP method, path, remote IP, status code, latency (ms), and query parameters.
 
 ---
 
 ## 2. Technology Stack
 
-- **Backend**: Python 3.12+, Django 5.0, Django REST Framework
+- **Backend**: Python 3.11+, Django 5.0, Django REST Framework
 - **Database**: PostgreSQL / SQLite (for local development)
 - **Background Worker & Broker**: Celery, Redis
+- **Containerization**: Docker, Docker Compose
+- **Testing & Code Quality**: Pytest, Pytest-Django, Ruff
 - **Document Processors**: PyPDF, python-docx
 - **AI & Schemas**: OpenAI-compatible HTTP Integration, Pydantic 2.5+
 - **API Documentation**: Swagger UI (`/swagger/` & `/`) & Postman Collection
@@ -67,6 +70,10 @@ This backend system provides a production-level API for uploading documents, val
 
 ```text
 ai_document_processing/
+├── Dockerfile
+├── docker-compose.yml
+├── .dockerignore
+├── pytest.ini
 ├── manage.py
 ├── pyproject.toml
 ├── requirements.txt
@@ -92,14 +99,17 @@ ai_document_processing/
 │   └── documents/
 │       ├── models.py           # Document model & status choices
 │       ├── tasks.py            # Celery background tasks
-│       ├── middleware.py       # Centralized exception handling
+│       ├── middleware.py       # Request logging & custom exception handler
 │       ├── urls.py             # App URL routing
 │       │
 │       ├── api/
 │       │   └── v1/
-│       │       ├── document_views.py       # Document Upload, List & Detail APIViews
+│       │       ├── document_views.py       # Upload, List, Detail & SSE Streaming APIViews
 │       │       ├── document_serializers.py # DRF serializers
 │       │       └── urls.py                 # Versioned API routes
+│       │
+│       ├── prompts/           # Configurable prompt templates registry
+│       │   └── templates.py
 │       │
 │       ├── extractors/         # Format-specific extractors & factory
 │       │   ├── base.py
@@ -111,8 +121,16 @@ ai_document_processing/
 │       ├── services/          # Service layer logic
 │       │   ├── document_service.py
 │       │   ├── extraction_service.py
-│       │   ├── llm_service.py  # LLM API integration with Retries & Timeout
+│       │   ├── llm_service.py  # LLM API integration with Retries, Timeout & Streaming
 │       │   └── processing_service.py
+│       │
+│       ├── tests/             # Comprehensive Pytest test suite
+│       │   ├── conftest.py
+│       │   ├── test_api.py
+│       │   ├── test_extractors.py
+│       │   ├── test_middleware.py
+│       │   ├── test_models.py
+│       │   └── test_services.py
 │       │
 │       ├── schemas/           # Pydantic schemas
 │       │   └── llm_response.py
@@ -129,7 +147,23 @@ ai_document_processing/
 
 ---
 
-## 5. Setup & Running Locally
+## 5. Quick Start with Docker 🐳
+
+The easiest way to run the entire stack (Django API, Celery Worker, Redis) is using Docker Compose.
+
+```bash
+# 1. Clone the repository and enter directory
+cd ai_document_processing
+
+# 2. Build and start containers
+docker compose up --build
+```
+
+The application will be accessible at `http://localhost:8000`.
+
+---
+
+## 6. Setup & Running Locally (Without Docker)
 
 ### Step 1: Environment Setup
 
@@ -151,12 +185,14 @@ cp .env.example .env
 python manage.py migrate
 ```
 
-### Step 3: Run Celery Worker (In a separate terminal)
+### Step 3: Run Celery Worker (Optional in local dev)
 
 ```bash
 # Ensure Redis server is running
 celery -A config worker --loglevel=info
 ```
+
+*Note: In local development, `CELERY_TASK_ALWAYS_EAGER=True` is enabled by default so document tasks execute synchronously without requiring an active Celery worker.*
 
 ### Step 4: Run Development Server
 
@@ -170,7 +206,21 @@ Access endpoints:
 
 ---
 
-## 6. Environment Variables
+## 7. Running Tests 🧪
+
+Run the unit test suite and linting checks:
+
+```bash
+# Run pytest test suite
+pytest -v
+
+# Run ruff code linter
+ruff check .
+```
+
+---
+
+## 8. Environment Variables
 
 | Variable Name | Description | Default |
 |---|---|---|
@@ -180,32 +230,23 @@ Access endpoints:
 | `DATABASE_URL` | Database Connection URL | `sqlite:///db.sqlite3` |
 | `CELERY_BROKER_URL` | Redis URL for Celery broker | `redis://127.0.0.1:6379/0` |
 | `CELERY_RESULT_BACKEND` | Redis URL for Celery result backend | `redis://127.0.0.1:6379/0` |
+| `CELERY_TASK_ALWAYS_EAGER` | Run Celery tasks synchronously in dev | `True` |
 | `LLM_API_KEY` | OpenAI / Compatible API key (`mock-api-key` for offline testing) | `mock-api-key` |
 | `LLM_BASE_URL` | LLM HTTP API endpoint | `https://api.openai.com/v1` |
 | `LLM_MODEL` | LLM Model Name | `gpt-4o-mini` |
 | `LLM_TIMEOUT` | Request timeout in seconds | `30` |
 | `LLM_MAX_RETRIES` | Max retries for transient errors | `3` |
+| `LLM_PROMPT_OVERRIDE` | Optional system prompt override | `""` |
 | `MAX_UPLOAD_SIZE_MB` | Maximum allowed file upload size (MB) | `10` |
 
 ---
 
-## 7. API Usage Examples
+## 9. API Usage Examples
 
 ### Health Check
 
 ```bash
 curl -X GET http://127.0.0.1:8000/health/
-```
-
-**Response (200 OK):**
-```json
-{
-  "status": "healthy",
-  "services": {
-    "database": "healthy",
-    "redis": "healthy"
-  }
-}
 ```
 
 ### 1. Upload Document
@@ -216,41 +257,6 @@ curl -X POST http://127.0.0.1:8000/api/v1/documents/ \
 ```
 
 **Response (202 Accepted):**
-```json
-{
-  "success": true,
-  "data": {
-    "id": "e6a7153b-857c-473d-9d41-38e2ecad03a1",
-    "filename": "sample.pdf",
-    "status": "PENDING",
-    "file_type": "pdf",
-    "file_size": 45210,
-    "mime_type": "application/pdf",
-    "content_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-    "created_at": "2026-08-19T10:00:00Z",
-    "processed_at": null,
-    "error_message": null,
-    "task_id": "7b89f31a-4d2c-491a-8212-0012abcde345",
-    "retry_count": 0,
-    "analysis": null
-  },
-  "message": "Document uploaded successfully and queued for background analysis."
-}
-```
-
-### 2. List Documents (Paginated & Filtered)
-
-```bash
-curl -X GET "http://127.0.0.1:8000/api/v1/documents/?status=COMPLETED&file_type=pdf&page=1&page_size=10"
-```
-
-### 3. Get Document Detail
-
-```bash
-curl -X GET http://127.0.0.1:8000/api/v1/documents/e6a7153b-857c-473d-9d41-38e2ecad03a1/
-```
-
-**Response (200 OK):**
 ```json
 {
   "success": true,
@@ -268,25 +274,60 @@ curl -X GET http://127.0.0.1:8000/api/v1/documents/e6a7153b-857c-473d-9d41-38e2e
     "task_id": "7b89f31a-4d2c-491a-8212-0012abcde345",
     "retry_count": 0,
     "analysis": {
-      "title": "Quarterly Financial Analysis",
-      "summary": "The document presents a comprehensive financial review of performance with growth metrics.",
-      "keywords": ["Finance", "Quarterly Report", "Revenue", "Growth"],
-      "language": "English",
-      "word_count": 1420
+      "title": "Document Intelligence Analysis",
+      "summary": "Comprehensive analysis of document...",
+      "document_category": "Technical Specification",
+      "confidence_score": 0.98
     }
-  }
+  },
+  "message": "Document uploaded successfully and queued for background analysis."
 }
+```
+
+### 2. List Documents (Paginated & Filtered)
+
+```bash
+curl -X GET "http://127.0.0.1:8000/api/v1/documents/?status=COMPLETED&file_type=pdf&page=1&page_size=10"
+```
+
+### 3. Get Document Detail
+
+```bash
+curl -X GET http://127.0.0.1:8000/api/v1/documents/e6a7153b-857c-473d-9d41-38e2ecad03a1/
+```
+
+### 4. Stream Document Analysis (Server-Sent Events)
+
+```bash
+curl -N -X GET "http://127.0.0.1:8000/api/v1/documents/e6a7153b-857c-473d-9d41-38e2ecad03a1/stream/?template=resume" \
+  -H "accept: text/event-stream"
+```
+
+**SSE Stream Response:**
+```http
+data: {"chunk": "{\n", "done": false}
+
+data: {"chunk": "  \"title\": \"Document Intelligence Analysis\",\n", "done": false}
+
+...
+
+data: {
+data:   "event": "completed",
+data:   "result": { ... },
+data:   "done": true
+data: }
 ```
 
 ---
 
-## 8. Design Decisions & Security
+## 10. Design Decisions & Security
 
 1. **Security**:
    - Files are validated against magic bytes headers (`%PDF-`, `PK\x03\x04`) to prevent malicious file extension spoofing.
    - Internal storage filenames incorporate UUIDs to prevent file overwrite collisions or directory traversal attacks.
    - Central exception handling ensures internal exception stack traces and secrets are never exposed to API clients.
 
-2. **Performance & Optimization**:
+2. **Performance & Observability**:
    - Celery background processing prevents long HTTP request blocks during text extraction and LLM calls.
+   - `RequestLoggingMiddleware` provides JSON observability across HTTP latency, IP, status code, and endpoint paths.
    - Standardized indexes on `(status, created_at)`, `(file_type, created_at)`, and `content_hash` optimize database queries.
