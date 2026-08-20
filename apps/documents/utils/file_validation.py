@@ -14,11 +14,8 @@ def sanitize_filename(filename: str) -> str:
     if not filename:
         return "unnamed_file"
 
-    # Strip paths
     filename = os.path.basename(filename)
-    # Remove null bytes
     filename = filename.replace("\x00", "")
-    # Clean non-alphanumeric chars except dots, hyphens, underscores
     filename = re.sub(r"[^\w\.\-]", "_", filename)
 
     return filename[:200] if len(filename) > 200 else filename
@@ -58,10 +55,8 @@ def validate_magic_bytes(file_obj, ext: str) -> bool:
     if ext == ".pdf":
         return header.startswith(b"%PDF-")
     elif ext == ".docx":
-        # DOCX is a zip file starting with PK\x03\x04
         return header.startswith(b"PK\x03\x04")
     elif ext == ".txt":
-        # Check text decoding
         try:
             header.decode("utf-8")
             return True
@@ -93,7 +88,6 @@ def validate_uploaded_file(uploaded_file):
     if not filename:
         raise ValidationError({"file": "Uploaded file must have a filename."})
 
-    # Check file size
     size = uploaded_file.size
     if size == 0:
         raise ValidationError({"file": "Empty files are not allowed."})
@@ -105,7 +99,6 @@ def validate_uploaded_file(uploaded_file):
             {"file": f"File size ({size / (1024*1024):.2f}MB) exceeds limit of {max_mb}MB."}
         )
 
-    # Check file extension
     ext = os.path.splitext(filename)[1].lower()
     if ext not in settings.ALLOWED_EXTENSIONS:
         allowed_exts = ", ".join(sorted(settings.ALLOWED_EXTENSIONS))
@@ -113,9 +106,7 @@ def validate_uploaded_file(uploaded_file):
             {"file": f"Unsupported file extension '{ext}'. Allowed extensions: {allowed_exts}."}
         )
 
-    # Check MIME type from header
     content_type = getattr(uploaded_file, "content_type", "").lower()
-    # Map extensions to expected mime types
     mime_map = {
         ".pdf": "application/pdf",
         ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
@@ -123,14 +114,12 @@ def validate_uploaded_file(uploaded_file):
     }
     expected_mime = mime_map.get(ext)
 
-    # Allow fallback if content_type is octet-stream but magic bytes match
     if content_type and content_type not in settings.ALLOWED_MIME_TYPES:
         if content_type != "application/octet-stream":
             raise ValidationError(
                 {"file": f"Invalid MIME type '{content_type}' for extension '{ext}'."}
             )
 
-    # Magic byte header signature validation
     if not validate_magic_bytes(uploaded_file, ext):
         raise ValidationError(
             {"file": f"File content does not match expected format for extension '{ext}'."}

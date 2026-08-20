@@ -30,7 +30,6 @@ class ProcessingService:
             logger.error(f"Processing failed: Document ID {document_id} not found.")
             raise ValueError(f"Document ID {document_id} does not exist.")
 
-        # Update status to PROCESSING
         doc.status = DocumentStatus.PROCESSING
         doc.processing_started_at = timezone.now()
         if task_id:
@@ -46,7 +45,6 @@ class ProcessingService:
         )
 
         try:
-            # Step 1: Text Extraction
             file_path = doc.file.path
             extracted_text = ExtractionService.extract_text_from_file(file_path, doc.file_type)
 
@@ -59,13 +57,11 @@ class ProcessingService:
                 char_count=len(extracted_text),
             )
 
-            # Step 2: LLM Analysis
             llm_service = LLMService()
             structured_logger.info("llm_request_started", document_id=str(doc.id))
 
             analysis_result = llm_service.analyze_document(extracted_text)
 
-            # Step 3: Save results and mark COMPLETED
             doc.llm_response = analysis_result
             doc.status = DocumentStatus.COMPLETED
             doc.error_message = None

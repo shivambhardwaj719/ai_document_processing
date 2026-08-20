@@ -23,10 +23,8 @@ class DocumentService:
         """
         Validate uploaded file and save Document record to DB.
         """
-        # Validate file properties and header magic bytes
         validated_meta = validate_uploaded_file(uploaded_file)
 
-        # Compute content hash for SHA-256 integrity / deduplication tracking
         content_hash = compute_file_hash(uploaded_file)
 
         original_name = validated_meta["original_filename"]
