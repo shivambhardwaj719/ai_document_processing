@@ -53,9 +53,9 @@ def validate_magic_bytes(file_obj, ext: str) -> bool:
         return False
 
     if ext == ".pdf":
-        return header.startswith(b"%PDF-")
+        return bool(header.startswith(b"%PDF-"))
     elif ext == ".docx":
-        return header.startswith(b"PK\x03\x04")
+        return bool(header.startswith(b"PK\x03\x04"))
     elif ext == ".txt":
         try:
             header.decode("utf-8")
