@@ -27,3 +27,5 @@ else:
             "PORT": url.port or 5432,
         }
     }
+
+CELERY_TASK_ALWAYS_EAGER = True
