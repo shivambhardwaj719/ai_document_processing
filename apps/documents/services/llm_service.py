@@ -217,7 +217,7 @@ class LLMService:
             ],
             "action_items": ["Review extracted metadata and section summaries for accuracy."],
             "entities": {
-                "organizations": ["Telepathy Infotech", "AI Document Processing Corp"],
+                "organizations": ["DTP Labs", "AI Document Processing Corp"],
                 "dates": ["August 2026"],
                 "locations": ["India", "Global"],
                 "people": ["Shivam Bhardwaj"] if "Shivam" in extracted_text else ["Document Author"],

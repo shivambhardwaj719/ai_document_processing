@@ -245,7 +245,7 @@ components:
                     example: Work Experience
                   summary:
                     type: string
-                    example: Associate Software Developer at Telepathy Infotech.
+                    example: Associate Software Developer at DTP Labs.
             action_items:
               type: array
               items:
@@ -258,7 +258,7 @@ components:
                   type: array
                   items:
                     type: string
-                  example: ["Telepathy Infotech", "ReyDiv Technologies"]
+                  example: ["DTP Labs"]
                 dates:
                   type: array
                   items:
