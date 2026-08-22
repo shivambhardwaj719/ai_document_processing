@@ -48,6 +48,7 @@ class ProcessingService:
         try:
             # Step 1: Text Extraction
             file_path = doc.file.path
+            # Call ExtractionService to extract text content from the file based on its type
             extracted_text = ExtractionService.extract_text_from_file(file_path, doc.file_type)
 
             doc.extracted_text = extracted_text
@@ -63,6 +64,7 @@ class ProcessingService:
             llm_service = LLMService()
             structured_logger.info("llm_request_started", document_id=str(doc.id))
 
+            # Call LLMService to analyze the extracted text and generate structured JSON insights
             analysis_result = llm_service.analyze_document(extracted_text)
 
             # Step 3: Save results and mark COMPLETED

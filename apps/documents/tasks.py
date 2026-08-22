@@ -35,6 +35,7 @@ def process_document_task(self, document_id: str):
         doc.save(update_fields=["retry_count"])
 
     try:
+        # Call ProcessingService to handle the entire document processing pipeline
         ProcessingService.process_document(document_id, task_id=task_id)
 
     except OperationalError as db_err:

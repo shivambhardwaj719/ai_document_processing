@@ -4,7 +4,6 @@ from django.core.exceptions import ObjectDoesNotExist
 from rest_framework import parsers
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.views import APIView
-
 from apps.common import HttpResponseCode, ResponseHandler, ResponseMessages
 from apps.documents.api.v1.document_serializers import (
     DocumentDetailSerializer,
@@ -36,9 +35,9 @@ class DocumentListUploadView(APIView):
             return ResponseHandler.error(
                 code="INVALID_FILTER",
                 message=ResponseMessages.INVALID_FILE_TYPE_FILTER,
-                status_code=HttpResponseCode.BAD_REQUEST,
             )
 
+        # Call DocumentService to retrieve a filtered list of documents
         queryset = DocumentService.list_documents(
             status_filter=status_param, file_type_filter=file_type_param
         )
@@ -73,10 +72,12 @@ class DocumentListUploadView(APIView):
         serializer.is_valid(raise_exception=True)
 
         uploaded_file = serializer.validated_data["file"]
+        # Call DocumentService to create a new Document record from the uploaded file
         document = DocumentService.create_document_from_upload(uploaded_file)
 
         task_id = None
         try:
+            # Trigger Celery background task to process the document asynchronously
             task_result = process_document_task.delay(str(document.id))
             task_id = task_result.id
             document.task_id = task_id
@@ -88,6 +89,7 @@ class DocumentListUploadView(APIView):
                 f"Celery broker dispatch failed for Document {document.id}: {celery_err}. Executing synchronously."
             )
             try:
+                # Call the processing task synchronously as a fallback if Celery fails
                 process_document_task(str(document.id))
                 document.refresh_from_db()
             except Exception as sync_err:
@@ -104,6 +106,7 @@ class DocumentListUploadView(APIView):
 class DocumentDetailView(APIView):
     def get(self, request, pk):
         try:
+            # Call DocumentService to fetch a specific document by its ID
             document = DocumentService.get_document_by_id(pk)
 
         except (ObjectDoesNotExist, ValueError):
